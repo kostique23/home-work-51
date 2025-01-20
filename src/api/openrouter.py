@@ -10,31 +10,31 @@ load_dotenv()
 class OpenRouterClient:
     """
     Клиент для взаимодействия с OpenRouter API.
-    
+
     OpenRouter - это сервис, предоставляющий унифицированный доступ к различным
     языковым моделям (GPT, Claude и др.) через единый API интерфейс.
     """
-    
+
     def __init__(self):
         """
         Инициализация клиента OpenRouter.
-        
+
         Настраивает:
         - Систему логирования
         - API ключ и базовый URL из переменных окружения
         - Заголовки для HTTP запросов
         - Список доступных моделей
-        
+
         Raises:
             ValueError: Если API ключ не найден в переменных окружения
         """
         # Инициализация логгера для отслеживания работы клиента
         self.logger = AppLogger()
-        
+
         # Получение необходимых параметров из переменных окружения
         self.api_key = os.getenv("OPENROUTER_API_KEY")  # API ключ для авторизации
         self.base_url = os.getenv("BASE_URL")          # Базовый URL API
-        
+
         # Проверка наличия API ключа
         if not self.api_key:
             # Логирование критической ошибки
@@ -50,24 +50,24 @@ class OpenRouterClient:
 
         # Логирование успешной инициализации клиента
         self.logger.info("OpenRouterClient initialized successfully")
-        
+
         # Загрузка списка доступных моделей при инициализации
         self.available_models = self.get_models()
 
     def get_models(self):
         """
         Получение списка доступных языковых моделей.
-        
+
         Returns:
             list: Список словарей с информацией о моделях:
                  [{"id": "model-id", "name": "Model Name"}, ...]
-                 
+
         Note:
             При ошибке запроса возвращает список базовых моделей по умолчанию
         """
         # Логирование начала запроса списка моделей
         self.logger.debug("Fetching available models")
-        
+
         try:
             # Выполнение GET запроса к API для получения списка моделей
             response = requests.get(
@@ -76,10 +76,10 @@ class OpenRouterClient:
             )
             # Преобразование ответа из JSON в словарь Python
             models_data = response.json()
-            
+
             # Логирование успешного получения списка моделей
             self.logger.info(f"Retrieved {len(models_data["data"])} models")
-            
+
             # Преобразование данных в нужный формат
             return [
                 {
@@ -102,23 +102,23 @@ class OpenRouterClient:
     def send_message(self, message: str, model: str):
         """
         Отправка сообщения выбранной языковой модели.
-        
+
         Args:
             message (str): Текст сообщения для отправки
             model (str): Идентификатор выбранной модели
-            
+
         Returns:
             dict: Ответ от API, содержащий либо ответ модели, либо информацию об ошибке
         """
         # Логирование отправки сообщения
         self.logger.debug(f"Sending message to model: {model}")
-        
+
         # Формирование данных для отправки в API
         data = {
             "model": model,  # Идентификатор выбранной модели
             "messages": [{"role": "user", "content": message}]  # Сообщение в формате API
         }
-        
+
         try:
             # Логирование начала выполнения запроса
             self.logger.debug("Making API request")
@@ -129,13 +129,13 @@ class OpenRouterClient:
                 headers=self.headers,                 # Заголовки с авторизацией
                 json=data                            # Данные запроса
             )
-            
+
             # Проверка на ошибки HTTP
             response.raise_for_status()
-            
+
             # Логирование успешного получения ответа
             self.logger.info("Successfully received response from API")
-            
+
             # Возврат данных ответа
             return response.json()
 
@@ -145,32 +145,43 @@ class OpenRouterClient:
             # Логирование ошибки с полным стектрейсом для отладки
             self.logger.error(error_msg, exc_info=True)
             # Возврат сообщения об ошибке в формате ответа API
-            return {"error": str(e)}       
+            return {"error": str(e)}
 
     def get_balance(self):
-        """
-        Получение текущего баланса аккаунта.
-        
-        Returns:
-            str: Строка с балансом в формате '$X.XX' или 'Ошибка' при неудаче
-        """
-        try:
-            # Запрос баланса через API
-            response = requests.get(
-                f"{self.base_url}/credits",  # Эндпоинт для проверки баланса
-                headers=self.headers         # Заголовки с авторизацией
-            )
-            # Получение данных из ответа
-            data = response.json()
-            if data:
-                data = data.get('data')
-                # Вычисление доступного баланса (всего кредитов минус использовано)
-                return f"${(data.get('total_credits', 0)-data.get('total_usage', 0)):.2f}"
-            return "Ошибка"
-        except Exception as e:
-            # Формирование сообщения об ошибке
-            error_msg = f"API request failed: {str(e)}"
-            # Логирование ошибки с полным стектрейсом
-            self.logger.error(error_msg, exc_info=True)
-            # Возврат сообщения об ошибке
-            return "Ошибка"
+            """
+            Получение текущего баланса аккаунта. Отправляет уведомление, если баланс ниже порога.
+            Returns:
+                str: Строка с балансом в формате '$X.XX' или 'Ошибка' при неудаче
+            """
+            try:
+                # Запрос баланса через API
+                response = requests.get(
+                    f"{self.base_url}/credits",
+                    headers=self.headers
+                )
+                # Получение данных из ответа
+                data = response.json()
+                if data:
+                    data = data.get('data')
+                    # Вычисление доступного баланса
+                    balance_str = f"${(data.get('total_credits', 0)-data.get('total_usage', 0)):.2f}"
+
+                    try:
+                        balance_float = float(balance_str[1:])
+                        if balance_float < float(os.getenv("LOW_BALANCE_THRESHOLD", 1)):
+                            from utils.notifications import NotificationManager
+                            notification_manager = NotificationManager()
+                            notification_manager.send_low_balance_notification(balance_str)
+                    except ValueError as e:
+                        self.logger.error(f"Ошибка преобразования баланса: {e}")
+
+
+                    return balance_str
+                return "Ошибка"
+            except requests.exceptions.RequestException as e:
+                # Формирование сообщения об ошибке
+                error_msg = f"API request failed: {str(e)}"
+                # Логирование ошибки с полным стектрейсом
+                self.logger.error(error_msg, exc_info=True)
+                # Возврат сообщения об ошибке
+                return "Ошибка"

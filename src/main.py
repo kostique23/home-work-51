@@ -44,7 +44,7 @@ class ChatApp:
         # Создание директории для экспорта истории чата
         self.exports_dir = "exports"               # Путь к директории экспорта
         os.makedirs(self.exports_dir, exist_ok=True)  # Создание директории, если её нет
-        
+
     def load_chat_history(self):
         """
         Загрузка истории чата из кэша и отображение её в интерфейсе.
@@ -85,12 +85,12 @@ class ChatApp:
             self.balance_text.value = "Баланс: н/д"         # Установка текста ошибки
             self.balance_text.color = ft.Colors.RED_400     # Установка красного цвета для ошибки
             self.logger.error(f"Ошибка обновления баланса: {e}")
-            
+
     def main(self, page: ft.Page):
         """
         Основная функция инициализации интерфейса приложения.
         Создает все элементы UI и настраивает их взаимодействие.
-        
+
         Args:
             page (ft.Page): Объект страницы Flet для размещения элементов интерфейса
         """
@@ -138,7 +138,7 @@ class ChatApp:
                 response = await loop.run_in_executor(
                     None,
                     lambda: self.api_client.send_message(
-                        user_message, 
+                        user_message,
                         self.model_dropdown.value
                     )
                 )
@@ -244,7 +244,7 @@ class ChatApp:
                 self.cache.clear_history()          # Очистка кэша
                 self.analytics.clear_data()         # Очистка аналитики
                 self.chat_history.controls.clear()  # Очистка истории чата
-                
+
             except Exception as e:
                 self.logger.error(f"Ошибка очистки истории: {e}")
                 show_error_snack(page, f"Ошибка очистки истории: {str(e)}")
@@ -258,7 +258,7 @@ class ChatApp:
             async def clear_confirmed(e):         # Функция подтверждения очистки
                 await clear_history(e)
                 close_dialog(dialog)
-                
+
 
             # Создание диалога подтверждения
             dialog = ft.AlertDialog(
@@ -275,15 +275,15 @@ class ChatApp:
             page.overlay.append(dialog)
             dialog.open = True
             page.update()
-            
+
         def close_dialog(dialog):
             """Закрытие диалогового окна"""
             dialog.open = False                   # Закрытие диалога
             page.update()                         # Обновление страницы
-                                    
+
             if dialog in page.overlay:            # Удаление из overlay
                 page.overlay.remove(dialog)
-      
+
 
         async def save_dialog(e):
             """
@@ -322,7 +322,7 @@ class ChatApp:
                     ]),
                     actions=[
                         ft.TextButton("OK", on_click=lambda e: close_dialog(dialog)),
-                        ft.TextButton("Открыть папку", 
+                        ft.TextButton("Открыть папку",
                             on_click=lambda e: os.startfile(self.exports_dir)
                         ),
                     ],
@@ -336,7 +336,7 @@ class ChatApp:
                 self.logger.error(f"Ошибка сохранения: {e}")
                 show_error_snack(page, f"Ошибка сохранения: {str(e)}")
 
-    
+
 
         # Создание компонентов интерфейса
         self.message_input = ft.TextField(**AppStyles.MESSAGE_INPUT) # Поле ввода
@@ -367,9 +367,9 @@ class ChatApp:
         )
 
         # Создание layout компонентов
-        
+
         # Создание ряда кнопок управления
-        control_buttons = ft.Row(  
+        control_buttons = ft.Row(
             controls=[                      # Размещение кнопок в ряд
                 save_button,
                 analytics_button,
@@ -424,10 +424,10 @@ class ChatApp:
 
         # Добавление основной колонки на страницу
         page.add(self.main_column)
-        
+
         # Запуск монитора
         self.monitor.get_metrics()
-        
+
         # Логирование запуска
         self.logger.info("Приложение запущено")
 

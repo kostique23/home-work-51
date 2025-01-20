@@ -8,16 +8,16 @@ from pathlib import Path  # Для удобной работы с путями �
 def build_windows():
     """Сборка исполняемого файла для Windows с помощью PyInstaller"""
     print("Building Windows executable...")
-    
+
     # Устанавливаем зависимости проекта для Windows из файла requirements.txt
     # sys.executable - путь к текущему интерпретатору Python
     subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
-    
+
     # Создаём директорию bin, если она не существует
     # exist_ok=True позволяет не выбрасывать ошибку, если директория уже существует
     bin_dir = Path("bin")
     bin_dir.mkdir(exist_ok=True)
-    
+
     # Запускаем PyInstaller со следующими параметрами:
     # --onefile: создать один исполняемый файл
     # --windowed: запускать без консольного окна
@@ -35,7 +35,7 @@ def build_windows():
         "--uac-admin",
         "src/main.py"
     ])
-    
+
     # Перемещаем собранный файл в директорию bin
     # Используем try/except для обработки возможных ошибок при перемещении
     try:
@@ -47,14 +47,14 @@ def build_windows():
 def build_linux():
     """Сборка исполняемого файла для Linux с помощью PyInstaller"""
     print("Building Linux executable...")
-    
+
     # Устанавливаем зависимости проекта для Linux
     subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
-    
+
     # Создаём директорию bin, если она не существует
     bin_dir = Path("bin")
     bin_dir.mkdir(exist_ok=True)
-    
+
     # Запускаем PyInstaller для Linux со следующими параметрами:
     # --onefile: создать один исполняемый файл
     # --windowed: запускать без консольного окна
@@ -68,7 +68,7 @@ def build_linux():
         "--name=aichat",
         "src/main.py"
     ])
-    
+
     # Перемещаем собранный файл в директорию bin
     try:
         shutil.move("dist/aichat", "bin/aichat")
@@ -76,9 +76,41 @@ def build_linux():
     except:
         print("Linux build completed! Executable location: dist/aichat")
 
+def build_macos():
+    """Сборка исполняемого файла для macOS с помощью PyInstaller"""
+    print("Building macOS executable...")
+
+    # Устанавливаем зависимости проекта для macOS
+    subprocess.run([sys.executable, "-m", "pip", "install", "-r", "requirements.txt"])
+
+    # Создаём директорию bin, если она не существует
+    bin_dir = Path("bin")
+    bin_dir.mkdir(exist_ok=True)
+
+    # Запускаем PyInstaller для macOS со следующими параметрами:
+    # --onefile: создать один исполняемый файл
+    # --windowed: запускать без консольного окна
+    # --icon: указать иконку приложения
+    # --name: задать имя выходного файла
+    subprocess.run([
+        "pyinstaller",
+        "--onefile",
+        "--windowed",
+        "--icon=assets/icon.icns",
+        "--name=aichat",
+        "src/main.py"
+    ])
+
+    # Перемещаем собранный файл в директорию bin
+    try:
+        shutil.move("dist/aichat", "bin/aichat")
+        print("macOS build completed! Executable location: bin/aichat")
+    except:
+        print("macOS build completed! Executable location: dist/aichat")
+
 def main():
     """Основная функция сборки
-    
+
     Определяет операционную систему и запускает соответствующую функцию сборки
     """
     # Проверяем тип операционной системы
@@ -86,11 +118,11 @@ def main():
         build_windows()
     elif sys.platform.startswith('linux'):  # Если Linux
         build_linux()
+    elif sys.platform.startswith('darwin'):  # Если macOS
+        build_macos()
     else:  # Если другая ОС
         print("Unsupported platform")
 
 # Точка входа в скрипт
-# Если скрипт запущен напрямую (не импортирован как модуль),
-# то запускаем основную функцию
 if __name__ == "__main__":
     main()
